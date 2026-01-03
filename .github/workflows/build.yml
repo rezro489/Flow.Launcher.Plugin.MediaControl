@@ -1,45 +1,53 @@
 name: build
 
-permissions:
-  contents: write
-
 on:
-  push:
-    branches: ["main"]
+  workflow_dispatch:
 
 jobs:
   build:
     runs-on: windows-latest
-
     steps:
       - uses: actions/checkout@v4
 
       - name: Setup .NET
         uses: actions/setup-dotnet@v4
         with:
-          dotnet-version: 8.0.x
+          dotnet-version: '8.0.x'
 
-      - name: get version
-        id: version
-        uses: notiz-dev/github-action-json-property@release
-        with:
-          path: "plugin.json"
-          prop_path: "Version"
-
-      - run: echo ${{steps.version.outputs.prop}}
-
-      - name: Restore dependencies
+      - name: Restore
         run: dotnet restore
 
-      - name: Build
-        run: |
-          dotnet publish -c Release -r win-x64 --no-self-contained Flow.Launcher.Plugin.MediaControl.csproj
-          7z a -tzip "Flow.Launcher.Plugin.MediaControl.zip" "./bin/Release/win-x64/publish/*"
+      - name: Build (Release)
+        run: dotnet build -c Release --no-restore
 
-      - name: Publish
-        uses: softprops/action-gh-release@v2
+      # Packs the plugin folder structure so you can drop it into FlowLauncher\Plugins
+      - name: Package plugin
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = "Stop"
+          New-Item -ItemType Directory -Force -Path out | Out-Null
+
+          # Try to locate the built plugin output (best-effort generic)
+          $dll = Get-ChildItem -Recurse -Filter "Flow.Launcher.Plugin.MediaControl.dll" | Where-Object { $_.FullName -match "\\bin\\Release\\" } | Select-Object -First 1
+          if (-not $dll) { throw "Could not find Flow.Launcher.Plugin.MediaControl.dll in a Release output folder." }
+
+          $releaseDir = Split-Path $dll.FullName -Parent
+
+          # Create the folder Flow expects
+          $pluginDir = Join-Path "out" "MediaControl-1.0.2"
+          New-Item -ItemType Directory -Force -Path $pluginDir | Out-Null
+
+          # Copy build output
+          Copy-Item -Path (Join-Path $releaseDir "*") -Destination $pluginDir -Recurse -Force
+
+          # Copy images/plugin.json if they exist at repo root or typical locations
+          if (Test-Path "images") { Copy-Item "images" $pluginDir -Recurse -Force }
+          if (Test-Path "plugin.json") { Copy-Item "plugin.json" $pluginDir -Force }
+
+          Compress-Archive -Path $pluginDir -DestinationPath "out/MediaControl-1.0.2.zip" -Force
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
         with:
-          files: "Flow.Launcher.Plugin.MediaControl.zip"
-          tag_name: "v${{steps.version.outputs.prop}}"
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          name: MediaControl-1.0.2
+          path: out/MediaControl-1.0.2.zip
