@@ -30,45 +30,52 @@ namespace Flow.Launcher.Plugin.MediaControl
 
         public static IEnumerable<MediaControlAction> Actions()
         {
-            yield return new ()
-            {
-                Action = MediaPlaybackAction.Toggle,
-                Keywords = new List<string>{"play", "pause", "toggle"},
-                Title = "Toggle playback"
-            };
-             yield return new ()
-            {
-                Action = MediaPlaybackAction.Next,
-                Keywords = new List<string>{"next", "skip"},
-                Title = "Next track"
-            };
-             yield return new ()
-            {
-                Action = MediaPlaybackAction.Previous,
-                Keywords = new List<string>{"back", "previous"},
-                Title = "Previous track"
-            };
-             yield return new ()
-            {
-                Action = MediaPlaybackAction.Stop,
-                Keywords = new List<string>{"stop"},
-                Title = "Stop playback"
-            };
+    yield return new()
+    {
+        Action = MediaPlaybackAction.Toggle,
+        Keywords = new List<string> { "play", "pause", "toggle" },
+        Title = "Toggle playback",
+        Icon = "images\\toggle.png",
+    };
+    yield return new()
+    {
+        Action = MediaPlaybackAction.Next,
+        Keywords = new List<string> { "next", "skip" },
+        Title = "Next track",
+        Icon = "images\\next.png",
+    };
+    yield return new()
+    {
+        Action = MediaPlaybackAction.Previous,
+        Keywords = new List<string> { "back", "previous" },
+        Title = "Previous track",
+        Icon = "images\\previous.png",
+    };
+    yield return new()
+    {
+        Action = MediaPlaybackAction.Stop,
+        Keywords = new List<string> { "stop" },
+        Title = "Stop playback",
+        Icon = "images\\stop.png",
+    };
 }
     }
 
-    public class MediaControlAction
+public class MediaControlAction
+{
+    public required IEnumerable<string> Keywords { get; init; }
+    public required MediaPlaybackAction Action { get; init; }
+    public required string Title { get; init; }
+    public required string Icon { get; init; }
+
+    public Result AsResult()
     {
-        public required IEnumerable<string> Keywords { get; init; }
-        public required MediaPlaybackAction Action { get; init; }
-        public required string Title { get; init; }
-        public Result AsResult()
+        return new Result
         {
-            return new Result
-            {
-                Action = (context) => { MediaController.Execute(Action); return true; },
-                Title = Title,
-            };
-        }
+            Action = (context) => { MediaController.Execute(Action); return true; },
+            Title = Title,
+            IcoPath = Icon,
+        };
     }
+}
 }
